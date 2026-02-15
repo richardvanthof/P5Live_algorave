@@ -1,0 +1,89 @@
+let myShader
+let matcap, obj
+let matcap1, obj1
+let gltf
+
+function preload() {
+  matcap = loadImage("includes/demos-data/images/fish.png")
+  obj = loadModel("includes/demos-data/3d/teapot.obj")
+  matcap1 = loadImage("data/images/imagen3.png")
+  obj1 = loadModel("data/obj/algorave1.obj")
+  //gltf = loadModel("data/GLTF/scene.gltf")
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL)
+  pixelDensity(1)
+  noStroke()
+  myShader = createShader(vertShader, fragShader)
+}
+
+function draw() {
+  background(0)
+  shader(myShader)
+  orbitControl(5)
+
+  // --- First model ---
+  push()
+    myShader.setUniform("uMatcapTexture", matcap)
+    rotateX(radians(frameCount / 2))
+    rotateZ(radians(frameCount / 4))
+    translate(-150, 0, 0)
+    scale(5)
+    model(obj)
+  pop()
+
+  // --- Second model ---
+  push()
+    myShader.setUniform("uMatcapTexture", matcap1)
+    rotateX(radians(frameCount / 2))
+    rotateZ(radians(frameCount / 4))
+    translate(150, 0, 0)
+    scale(5)
+    model(obj1)
+  pop()
+  
+
+}
+
+/* SHADER DEFINITIONS */
+let vertShader = `
+  attribute vec3 aPosition;
+  attribute vec2 aTexCoord;
+  attribute vec3 aNormal;
+
+  uniform mat4 uProjectionMatrix;
+  uniform mat4 uModelViewMatrix;
+  uniform mat4 uNormalMatrix;
+
+  varying vec3 vNormal;
+  varying vec3 vEye;
+
+  void main() {
+    vEye = normalize(vec3(uModelViewMatrix * vec4(aPosition, 1.0)));
+    vNormal = normalize((uModelViewMatrix * vec4(aNormal, 0.0)).xyz);
+    vec4 positionVec4 = vec4(aPosition, 1.0);
+    gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;
+  }
+`
+
+let fragShader = `
+  precision mediump float;
+
+  varying vec3 vNormal;
+  varying vec3 vEye;
+
+  uniform sampler2D uMatcapTexture;
+
+  vec2 matcap(vec3 eye, vec3 normal) {
+    vec3 reflected = reflect(eye, normal);
+    float m = 2.8284271247461903 * sqrt(reflected.z + 1.0);
+    return reflected.xy / m + 0.5;
+  }
+
+  void main() {
+    vec2 uv = matcap(vEye, vNormal);
+    vec4 color = texture2D(uMatcapTexture, uv);
+    gl_FragColor = color;
+  }
+`
